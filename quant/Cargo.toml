@@ -1,0 +1,13 @@
+[package]
+name = "talos-forge-quant"
+version = "0.1.0"
+edition = "2021"
+description = "Quantisiert ein F32-GGUF (aus Hephaistos) nach Q4_0 für den Browser."
+
+[[bin]]
+name = "quantize"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+half = "2"

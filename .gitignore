@@ -1,3 +1,4 @@
 web/pkg/
-web/hephaistos.gguf
+web/*.gguf
 wasm/target/
+quant/target/

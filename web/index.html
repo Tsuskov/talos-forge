@@ -78,6 +78,20 @@
     color: var(--faint);
     min-height: 1.2em;
   }
+  /* Q4_0↔F32-Wechsel, als Link in der Chips-Zeile */
+  #swapBtn {
+    font: 12px var(--font);
+    font-weight: 500;
+    border: none;
+    background: none;
+    color: var(--accent);
+    cursor: pointer;
+    padding: 0;
+    transition: color 150ms ease;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    #swapBtn:hover { color: var(--accent-hover); }
+  }
 
   /* ── Ladephase ────────────────────────────────────────── */
   #loader { text-align: center; padding: 8px 0; }
@@ -303,7 +317,13 @@
 
 <script type="module">
   const $ = (id) => document.getElementById(id);
-  const MODEL = 'hephaistos.gguf';
+  const MODELS = {
+    q4: { file: 'hephaistos_q4.gguf', label: 'Q4_0' },
+    f32: { file: 'hephaistos.gguf', label: 'F32' },
+  };
+  let variant = 'q4';
+  let modelMB = 0;
+  const other = (v) => (v === 'q4' ? 'f32' : 'q4');
 
   const worker = new Worker('./worker.js', { type: 'module' });
   let forging = false;
@@ -326,8 +346,14 @@
   };
   promptEl.addEventListener('input', growPrompt);
 
-  // ── Modell holen, mit Fortschritt ──
-  (async () => {
+  // ── Modell holen, mit Fortschritt; auch für den Q4_0↔F32-Wechsel ──
+  async function loadModel(v) {
+    variant = v;
+    $('composer').classList.remove('on');
+    $('loader').style.display = '';
+    $('barFill').style.width = '0%';
+    $('phase').textContent = 'Der Ofen heizt auf …';
+    const MODEL = MODELS[v].file;
     try {
       const res = await fetch('./' + MODEL);
       if (!res.ok) throw new Error(`${MODEL}: HTTP ${res.status}`);
@@ -350,12 +376,14 @@
       const bytes = new Uint8Array(got);
       let off = 0;
       for (const p of parts) { bytes.set(p, off); off += p.length; }
+      modelMB = got / 1048576;
       $('phase').textContent = 'Talos erwacht …';
       worker.postMessage({ type: 'load', bytes: bytes.buffer }, [bytes.buffer]);
     } catch (err) {
       $('phase').textContent = 'Der Ofen bleibt kalt: ' + err.message;
     }
-  })();
+  }
+  loadModel(variant);
 
   // ── Worker-Ereignisse ──
   worker.onmessage = (e) => {
@@ -364,7 +392,12 @@
       $('loader').style.display = 'none';
       $('chips').innerHTML =
         `<span>${m.info.n_layer} Layer</span><span>${m.info.n_embd} dim</span>` +
-        `<span>${m.info.vocab_size} Vocab</span><span>${m.info.context_length} Kontext</span>`;
+        `<span>${m.info.vocab_size} Vocab</span><span>${m.info.context_length} Kontext</span>` +
+        `<span>${MODELS[variant].label} · ${modelMB.toFixed(1)} MB</span>` +
+        `<button id="swapBtn">${MODELS[other(variant)].label} laden</button>`;
+      $('swapBtn').addEventListener('click', () => {
+        if (!forging) loadModel(other(variant));
+      });
       $('composer').classList.add('on');
       $('prompt').focus();
     } else if (m.type === 'prefill') {

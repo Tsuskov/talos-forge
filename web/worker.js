@@ -12,11 +12,14 @@ onmessage = async (e) => {
   const m = e.data;
 
   if (m.type === 'load') {
+    gen++; // eine evtl. laufende Generierung gehört zum alten Modell
     try {
       await init();
+      if (forge) forge.free();
       forge = new Forge(new Uint8Array(m.bytes));
       postMessage({ type: 'ready', info: JSON.parse(forge.info()) });
     } catch (err) {
+      forge = null;
       postMessage({ type: 'error', error: String(err) });
     }
     return;
