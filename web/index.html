@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Schule von Athen</title>
-<meta name="description" content="Ein from-scratch LLM live im Browser — Cadmus (Tokenizer) → Hephaistos (Training) → Talos (wasm-Inferenz).">
+<title>AthenGPT</title>
+<meta name="description" content="AthenGPT — ein from-scratch LLM live im Browser. Cadmus (Tokenizer) → Hephaistos (Training) → Talos (wasm-Inferenz).">
 <link rel="icon" type="image/png" href="https://tsuskov.github.io/favicon.png">
-<meta property="og:title" content="Schule von Athen">
+<meta property="og:title" content="AthenGPT">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://tsuskov.github.io/talos-forge/">
 <meta property="og:description" content="Ein from-scratch LLM live im Browser — Cadmus → Hephaistos → Talos, als wasm.">
@@ -67,19 +67,46 @@
   header { transition-delay: 50ms; }
   #loader, #composer { transition-delay: 110ms; }
 
-  /* ── Emblem: das Art, stark zurückgenommen ────────────── */
+  /* ── Emblem: das Fresko als Contribution-Graph ─────────── */
   .art {
     display: flex;
     justify-content: center;
     margin-bottom: 26px;
   }
-  .art img {
-    width: min(230px, 56%);
-    height: auto;
-    /* Fresko direkt aufs Papier: Helles verschwindet im Ivory */
-    mix-blend-mode: multiply;
-    opacity: 0.92;
+  #artGrid {
+    width: min(300px, 74%);
+    display: grid;
+    grid-template-columns: repeat(40, 1fr);
+    gap: 1px;
+    aspect-ratio: 40 / 55;
     user-select: none;
+  }
+  #artGrid .acell {
+    border-radius: 20%;
+    /* Reveal-Welle von links nach rechts wie der Contribution-Graph
+       der Profilseite; Delay pro Spalte wird in JS gesetzt */
+    animation: cellIn 380ms var(--ease-out) backwards;
+    animation-delay: var(--cell-delay, 0ms);
+  }
+  @keyframes cellIn {
+    from { opacity: 0; transform: scale(0.6); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  #artGrid .l0 { background: var(--green-track); }
+  #artGrid .l1 { background: #9be9a8; }
+  #artGrid .l2 { background: var(--green-bright); }
+  #artGrid .l3 { background: var(--green); }
+  #artGrid .l4 { background: #216e39; }
+  @media (hover: hover) and (pointer: fine) {
+    #artGrid .acell {
+      transition: transform 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
+    }
+    #artGrid .acell:hover {
+      transform: scale(1.8);
+      border-radius: 28%;
+      z-index: 2;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.22);
+    }
   }
 
   /* ── Kopf ─────────────────────────────────────────────── */
@@ -335,15 +362,17 @@
     .cursor { animation: none; }
     h1:hover { animation: none; }
     #forgeBtn:active, #forgeBtn:hover { transform: none; }
+    #artGrid .acell { animation: none; }
+    #artGrid .acell:hover { transform: scale(1.3); }
   }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="art"><img src="./art/platon_aristoteles_green.png" alt="Platon und Aristoteles aus Raffaels Schule von Athen — als Block-ASCII in den Grüntönen des GitHub-Contribution-Graphen"></div>
+  <div class="art"><div id="artGrid" role="img" aria-label="Platon und Aristoteles aus Raffaels Schule von Athen — gerastert als GitHub-Contribution-Graph"></div></div>
 
   <header>
-    <h1>Schule von Athen</h1>
+    <h1>AthenGPT</h1>
     <div class="chips" id="chips"></div>
   </header>
 
@@ -378,6 +407,18 @@
 
 <script type="module">
   const $ = (id) => document.getElementById(id);
+
+  // Das Fresko als Contribution-Graph: 40 x 55 Zellen, Level 0-4,
+  // generiert aus art/platon_aristoteles_green.png (Block-Modus je Zelle).
+  const ART_COLS = 40;
+  const ART =
+    '0003330000000000000000000000000003430003000340000000000000000000000000000043000000033000000000000000000000000000003300000000300000000000000000000000000000330002000330000000000000000000000000000003000000030000000000000000000000000000000320000003300000000000000000000444400000332000000230000044130000000000444444000023200100033000044423300000000044344400000320231003000004444440000000000444444000033014004330000444344000000000044444400002302421433000444434400000000044443400000343244344400044443230000000003444330000044444444440044444333110000033334434320003444444444034444433311100033333343342200234444441443344443441111132333333444233033444444133344444444111143443333334333333344444421434444444431114433434333333333334443444243443443443211433444333312333334444334444444433344331134444432333333334444444444444443344443114444443233332233444444444444444334444311444444423333333333444444444444443344442144444444133333333344444444444444334444411444444441333333333444444444444444444442244444444444444443344434444441444114444323444444444444444244444444444134113444444344444444444444424444444444432001344444444444444444444442444344444443330124444343444444444444444344434444444433033444444444434444444444444444444444444430444444444444444444444444444444444444444444444444444444444444444244444444444444334344444444444444444444224444444404444332333444344443344444443322444434442444422433344402444344444444332244443444344443443134443344434434344432234444344434444444322444334444343344444333444334430444444233344333444444334444433344443442044444433434443334344434444444320444444334444443343444334343443444444430044444430444444444444433344344444444443004444440044444444444432224434444444444300444444004444444444442323343444444444420044444402344444444444323344344444444443004444443334444444444431334434444444444400444443210444444444430003234444444444444044444110044444444440000014444444444444434444440004444444440000000444444444444423444440021444444440000000044444444444443344000000014444444422222224444444444444344433232020444444444433333444444444444323444444444444444444444444444444444444443344444444444444444444444444444444444444444423333301334443000000000233444333444444440022300000000000000000000000000000344444';
+  ART.split('').forEach((ch, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'acell l' + ch;
+    cell.style.setProperty('--cell-delay', `${(i % ART_COLS) * 13}ms`);
+    $('artGrid').appendChild(cell);
+  });
   const MODELS = {
     q4: { file: 'hephaistos_q4.gguf', label: 'Q4_0' },
     f32: { file: 'hephaistos.gguf', label: 'F32' },
