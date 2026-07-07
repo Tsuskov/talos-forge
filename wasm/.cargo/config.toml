@@ -1,0 +1,4 @@
+# wasm-SIMD: alle Evergreen-Browser können simd128 (Chrome 91+, Safari 16.4+).
+# Ohne das Flag kompiliert `wide::f32x8` im Matvec-Hot-Path zu Skalar-Fallback.
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "target-feature=+simd128"]
