@@ -179,10 +179,13 @@
   #loader .bar i {
     display: block;
     height: 100%;
-    width: 0%;
+    width: 100%;
     background: var(--green);
     border-radius: inherit;
-    transition: width 200ms var(--ease-out);
+    /* scaleX statt width: läuft auf der GPU, kein Layout pro Chunk */
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 200ms var(--ease-out);
   }
 
   /* ── Composer: die eine Karte ─────────────────────────── */
@@ -326,6 +329,7 @@
 
   #againBtn {
     display: none;
+    opacity: 0;
     font: 12px var(--font);
     border: none;
     background: none;
@@ -333,9 +337,16 @@
     cursor: pointer;
     padding: 0 0 1px;
     border-bottom: 1px solid var(--line-strong);
-    transition: color 160ms var(--ease-out), border-color 160ms var(--ease-out);
+    /* display diskret mitanimieren, damit der Link ein- und ausfadet
+       statt zu ploppen */
+    transition: color 160ms var(--ease-out), border-color 160ms var(--ease-out),
+      opacity 160ms ease, display 160ms allow-discrete;
   }
-  #againBtn.on { display: inline; }
+  #againBtn.on {
+    display: inline;
+    opacity: 1;
+    @starting-style { opacity: 0; }
+  }
   @media (hover: hover) and (pointer: fine) {
     #againBtn:hover { color: var(--text); border-color: var(--text); }
   }
@@ -453,7 +464,7 @@
     variant = v;
     $('composer').classList.remove('on');
     $('loader').style.display = '';
-    $('barFill').style.width = '0%';
+    $('barFill').style.transform = 'scaleX(0)';
     $('phase').textContent = 'Der Ofen heizt auf …';
     const MODEL = MODELS[v].file;
     try {
@@ -469,7 +480,7 @@
         parts.push(value);
         got += value.length;
         if (total) {
-          $('barFill').style.width = (got / total * 100).toFixed(1) + '%';
+          $('barFill').style.transform = `scaleX(${(got / total).toFixed(3)})`;
           $('phase').textContent = `Der Ofen heizt auf … ${(got / 1048576).toFixed(0)} / ${(total / 1048576).toFixed(0)} MB`;
         } else {
           $('phase').textContent = `Der Ofen heizt auf … ${(got / 1048576).toFixed(0)} MB`;
@@ -530,8 +541,18 @@
     }
   };
 
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
   function setControls() {
     const btn = $('forgeBtn');
+    // Blur maskiert den Label-Wechsel: aus zwei harten Zuständen wird
+    // eine Verwandlung. Nur beim echten Umschalten, nicht bei jedem Aufruf.
+    if (btn.classList.contains('stop') !== forging && !reduceMotion.matches) {
+      btn.animate(
+        [{ filter: 'blur(2px)', opacity: 0.7 }, { filter: 'blur(0px)', opacity: 1 }],
+        { duration: 180, easing: 'ease' }
+      );
+    }
     if (forging) {
       btn.classList.add('stop');
       btn.innerHTML = 'Stopp<kbd>esc</kbd>';
