@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schule von Athen</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #faf9f5;
+    --surface: #ffffff;
+    --line: #e6e4dc;
+    --text: #1a1a18;
+    --dim: #6b6a66;
+    --faint: #a3a29c;
+    --accent: #0071e3;
+    --accent-hover: #0077ed;
+    --focus-ring: rgba(0, 113, 227, 0.12);
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --font: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 var(--font);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    padding: 72px 22px 72px;
+  }
+
+  .wrap { max-width: 640px; margin: 0 auto; }
+
+  /* ── Entrance beim Laden: einmalig, gestaffelt ────────── */
+  .art, header, #loader, #composer {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 500ms var(--ease-out), transform 500ms var(--ease-out);
+    @starting-style { opacity: 0; transform: translateY(8px); }
+  }
+  header { transition-delay: 50ms; }
+  #loader, #composer { transition-delay: 110ms; }
+
+  /* ── Emblem: das Art, stark zurückgenommen ────────────── */
+  .art {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 26px;
+  }
+  .art img {
+    width: min(230px, 56%);
+    height: auto;
+    /* Fresko direkt aufs Papier: Helles verschwindet im Ivory */
+    mix-blend-mode: multiply;
+    opacity: 0.92;
+    user-select: none;
+  }
+
+  /* ── Kopf ─────────────────────────────────────────────── */
+  header { text-align: center; margin-bottom: 40px; }
+
+  h1 {
+    font-size: 30px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+
+  .chips {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--faint);
+    min-height: 1.2em;
+  }
+
+  /* ── Ladephase ────────────────────────────────────────── */
+  #loader { text-align: center; padding: 8px 0; }
+  #loader .phase { color: var(--dim); font-size: 13px; }
+  #loader .bar {
+    width: min(300px, 76%);
+    height: 3px;
+    margin: 16px auto 0;
+    background: var(--line);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  #loader .bar i {
+    display: block;
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 200ms var(--ease-out);
+  }
+
+  /* ── Composer: die eine Karte ─────────────────────────── */
+  #composer {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: 0 2px 8px rgba(26, 26, 24, 0.04);
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+  #composer.on { display: block; }
+  #composer:focus-within {
+    border-color: #cfcdc4;
+    box-shadow: 0 2px 12px rgba(26, 26, 24, 0.07);
+  }
+
+  textarea {
+    display: block;
+    width: 100%;
+    height: 52px;      /* eine Zeile; wächst per JS mit dem Inhalt */
+    max-height: 280px;
+    overflow-y: auto;
+    resize: none;
+    background: transparent;
+    color: var(--text);
+    border: none;
+    padding: 16px 20px 4px;
+    font: 15px/1.55 var(--font);
+    outline: none;
+  }
+  textarea::placeholder { color: var(--faint); }
+
+  .composer-row {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-wrap: wrap;
+    padding: 8px 10px 10px 14px;
+  }
+
+  .field {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    padding: 4px 7px;
+    border-radius: 7px;
+    transition: background-color 150ms ease;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .field:hover { background: #f4f3ee; }
+  }
+  .field label { font-size: 11.5px; color: var(--faint); }
+  .field input {
+    width: 5.5ch;
+    background: transparent;
+    color: var(--dim);
+    border: none;
+    font: 12.5px var(--font);
+    font-variant-numeric: tabular-nums;
+    outline: none;
+  }
+  .field input:focus { color: var(--text); }
+  .field input::placeholder { color: var(--faint); }
+  .field input::-webkit-outer-spin-button,
+  .field input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  .spacer { flex: 1; }
+
+  /* Primärknopf: morpht Schmieden ↔ Stopp */
+  #forgeBtn {
+    font: 13.5px var(--font);
+    font-weight: 500;
+    border: none;
+    border-radius: 980px;
+    padding: 8px 18px;
+    cursor: pointer;
+    background: var(--accent);
+    color: #fff;
+    transition: transform 140ms var(--ease-out), background-color 180ms ease;
+  }
+  #forgeBtn:active { transform: scale(0.97); }
+  #forgeBtn.stop { background: #3d3d3a; }
+  @media (hover: hover) and (pointer: fine) {
+    #forgeBtn:not(.stop):hover { background: var(--accent-hover); }
+    #forgeBtn.stop:hover { background: #52524e; }
+  }
+  #forgeBtn kbd { font: 10.5px var(--font); opacity: 0.6; margin-left: 6px; }
+
+  /* ── Ergebnis: erscheint erst, wenn es etwas gibt ─────── */
+  #result {
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 350ms var(--ease-out), transform 350ms var(--ease-out);
+    margin-top: 34px;
+    display: none;
+  }
+  #result.on { display: block; }
+  #result.in { opacity: 1; transform: none; }
+
+  #anvil {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font: 13.5px/1.7 var(--mono);
+    padding: 0 4px;
+  }
+  #anvil .prompt { color: var(--faint); }
+  #anvil .gen { color: var(--text); }
+
+  .cursor {
+    display: none;
+    width: 0.55em;
+    height: 1.05em;
+    margin-left: 1px;
+    vertical-align: text-bottom;
+    background: var(--accent);
+    border-radius: 1px;
+    animation: blink 1.06s steps(2, start) infinite;
+  }
+  .forging .cursor { display: inline-block; }
+  @keyframes blink { to { visibility: hidden; } }
+
+  .result-foot {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-top: 14px;
+    padding: 0 4px;
+    font-size: 12px;
+    color: var(--faint);
+  }
+  .result-foot.err { color: #c0392b; }
+
+  #againBtn {
+    display: none;
+    font: 12px var(--font);
+    font-weight: 500;
+    border: none;
+    background: none;
+    color: var(--accent);
+    cursor: pointer;
+    padding: 0;
+    transition: color 150ms ease;
+  }
+  #againBtn.on { display: inline; }
+  @media (hover: hover) and (pointer: fine) {
+    #againBtn:hover { color: var(--accent-hover); }
+  }
+
+  footer {
+    margin-top: 64px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--faint);
+  }
+  footer b { color: var(--dim); font-weight: 500; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .art, header, #loader, #composer { transition: opacity 200ms ease; transform: none; }
+    #result { transition: opacity 200ms ease; transform: none; }
+    .cursor { animation: none; }
+    #forgeBtn:active { transform: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="art"><img src="./art/platon_aristoteles.png" alt="Platon und Aristoteles aus Raffaels Schule von Athen — als Block-ASCII gerendert"></div>
+
+  <header>
+    <h1>Schule von Athen</h1>
+    <div class="chips" id="chips"></div>
+  </header>
+
+  <div id="loader">
+    <div class="phase" id="phase">Der Ofen heizt auf …</div>
+    <div class="bar"><i id="barFill"></i></div>
+  </div>
+
+  <div id="composer">
+    <textarea id="prompt" rows="1" spellcheck="false" placeholder="Schreib einen Anfang — Hephaistos schmiedet weiter …"></textarea>
+    <div class="composer-row">
+      <div class="field"><label for="n">Tokens</label><input id="n" type="number" value="128" min="1" max="240"></div>
+      <div class="field"><label for="temp">Temp</label><input id="temp" type="number" value="0.8" min="0" max="2" step="0.05"></div>
+      <div class="field"><label for="topk">Top-k</label><input id="topk" type="number" placeholder="aus" min="1"></div>
+      <div class="field"><label for="topp">Top-p</label><input id="topp" type="number" placeholder="aus" min="0" max="1" step="0.05"></div>
+      <div class="field"><label for="seed">Seed</label><input id="seed" type="number" placeholder="zufällig" min="0"></div>
+      <div class="spacer"></div>
+      <button id="forgeBtn">Schmieden<kbd>⌘⏎</kbd></button>
+    </div>
+  </div>
+
+  <div id="result">
+    <div id="anvil"><span class="prompt" id="echo"></span><span class="gen" id="gen"></span><span class="cursor"></span></div>
+    <div class="result-foot"><span id="stats"></span><button id="againBtn">Weiterschmieden</button></div>
+  </div>
+
+  <footer>
+    <p><b>Cadmus</b> (Tokenizer) → <b>Hephaistos</b> (Training) → <b>Talos</b> (Inferenz) · WebAssembly · alles lokal, nichts verlässt deinen Rechner</p>
+  </footer>
+</div>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const MODEL = 'hephaistos.gguf';
+
+  const worker = new Worker('./worker.js', { type: 'module' });
+  let forging = false;
+  let lastSeed = null;
+
+  // Chatbar wächst und schrumpft mit dem Inhalt (52px … 280px)
+  const promptEl = $('prompt');
+  const growPrompt = () => {
+    promptEl.style.height = '52px';
+    promptEl.style.height = Math.min(promptEl.scrollHeight, 280) + 'px';
+  };
+  promptEl.addEventListener('input', growPrompt);
+
+  // ── Modell holen, mit Fortschritt ──
+  (async () => {
+    try {
+      const res = await fetch('./' + MODEL);
+      if (!res.ok) throw new Error(`${MODEL}: HTTP ${res.status}`);
+      const total = +res.headers.get('Content-Length') || 0;
+      const reader = res.body.getReader();
+      const parts = [];
+      let got = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        parts.push(value);
+        got += value.length;
+        if (total) {
+          $('barFill').style.width = (got / total * 100).toFixed(1) + '%';
+          $('phase').textContent = `Der Ofen heizt auf … ${(got / 1048576).toFixed(0)} / ${(total / 1048576).toFixed(0)} MB`;
+        } else {
+          $('phase').textContent = `Der Ofen heizt auf … ${(got / 1048576).toFixed(0)} MB`;
+        }
+      }
+      const bytes = new Uint8Array(got);
+      let off = 0;
+      for (const p of parts) { bytes.set(p, off); off += p.length; }
+      $('phase').textContent = 'Talos erwacht …';
+      worker.postMessage({ type: 'load', bytes: bytes.buffer }, [bytes.buffer]);
+    } catch (err) {
+      $('phase').textContent = 'Der Ofen bleibt kalt: ' + err.message;
+    }
+  })();
+
+  // ── Worker-Ereignisse ──
+  worker.onmessage = (e) => {
+    const m = e.data;
+    if (m.type === 'ready') {
+      $('loader').style.display = 'none';
+      $('chips').innerHTML =
+        `<span>${m.info.n_layer} Layer</span><span>${m.info.n_embd} dim</span>` +
+        `<span>${m.info.vocab_size} Vocab</span><span>${m.info.context_length} Kontext</span>`;
+      $('composer').classList.add('on');
+      $('prompt').focus();
+    } else if (m.type === 'chunk') {
+      $('gen').textContent += m.text;
+    } else if (m.type === 'done') {
+      forging = false;
+      $('anvil').classList.remove('forging');
+      setControls();
+      if (!m.stopped) {
+        const tps = m.tokens && m.secs ? (m.tokens / m.secs).toFixed(0) : '–';
+        $('stats').textContent =
+          `${m.tokens} Tokens · ${m.secs.toFixed(2)} s · ${tps} tok/s · Seed ${lastSeed}`;
+      } else {
+        $('stats').textContent = `Gestoppt · Seed ${lastSeed}`;
+      }
+    } else if (m.type === 'error') {
+      forging = false;
+      $('anvil').classList.remove('forging');
+      setControls();
+      document.querySelector('.result-foot').classList.add('err');
+      $('stats').textContent = m.error;
+    }
+  };
+
+  function setControls() {
+    const btn = $('forgeBtn');
+    if (forging) {
+      btn.classList.add('stop');
+      btn.innerHTML = 'Stopp<kbd>esc</kbd>';
+    } else {
+      btn.classList.remove('stop');
+      btn.innerHTML = 'Schmieden<kbd>⌘⏎</kbd>';
+    }
+    $('againBtn').classList.toggle('on', !forging && !!$('gen').textContent);
+  }
+
+  function forge() {
+    if (forging) return;
+    const prompt = $('prompt').value;
+    if (!prompt.trim()) { $('prompt').focus(); return; }
+    forging = true;
+    lastSeed = $('seed').value !== '' ? +$('seed').value : Math.floor(Math.random() * 2 ** 32);
+    document.querySelector('.result-foot').classList.remove('err');
+    $('stats').textContent = '';
+    $('echo').textContent = prompt;
+    $('gen').textContent = '';
+    const result = $('result');
+    result.classList.add('on');
+    requestAnimationFrame(() => result.classList.add('in'));
+    $('anvil').classList.add('forging');
+    setControls();
+    worker.postMessage({
+      type: 'generate',
+      prompt,
+      n: Math.max(1, +$('n').value || 128),
+      temp: Math.max(0, +$('temp').value || 0),
+      top_k: $('topk').value !== '' ? +$('topk').value : undefined,
+      top_p: $('topp').value !== '' ? +$('topp').value : undefined,
+      seed: lastSeed,
+    });
+  }
+
+  function stop() {
+    if (forging) worker.postMessage({ type: 'stop' });
+  }
+
+  $('forgeBtn').addEventListener('click', () => (forging ? stop() : forge()));
+  $('againBtn').addEventListener('click', () => {
+    $('prompt').value = $('echo').textContent + $('gen').textContent;
+    growPrompt();
+    forge();
+  });
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); forge(); }
+    if (e.key === 'Escape') stop();
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+[package]
+name = "talos-forge-wasm"
+version = "0.1.0"
+edition = "2021"
+description = "wasm-bindgen wrapper around talos — runs Hephaistos models in the browser."
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+talos = { path = "../../talos" }
+anyhow = "1"
+wasm-bindgen = "0.2"
+rand = "0.8"
+# rand's std feature pulls getrandom; on wasm it needs the js backend.
+getrandom = { version = "0.2", features = ["js"] }
+
+[profile.release]
+opt-level = 3
