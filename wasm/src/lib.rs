@@ -94,9 +94,14 @@ impl Forge {
 
     /// One decode step. Returns the newly completed text for this token, or
     /// `None` when the generation is finished (EOS, budget, or context full).
+    /// Bei erschöpftem Budget bleibt die Session bestehen — `resume` kann sie
+    /// ohne erneuten Prefill fortsetzen; EOS und volles Kontextfenster sind final.
     pub fn next_chunk(&mut self) -> Option<String> {
         let s = self.session.as_mut()?;
-        if s.left == 0 || s.pos >= self.model.cfg.context_length {
+        if s.left == 0 {
+            return None;
+        }
+        if s.pos >= self.model.cfg.context_length {
             self.session = None;
             return None;
         }
@@ -123,6 +128,24 @@ impl Forge {
         let chunk: String = chars[s.emitted.min(end)..end].iter().collect();
         s.emitted = end;
         Some(chunk)
+    }
+
+    /// Eine per Budget beendete Session mit `n` frischen Tokens fortsetzen —
+    /// KV-Cache und RNG laufen weiter, kein erneuter Prefill. Sampling-Parameter
+    /// werden übernommen, falls der Nutzer sie geändert hat. Gibt `false`
+    /// zurück, wenn keine Session mehr da ist (EOS oder Kontext voll) — dann
+    /// muss der Aufrufer neu mit `start` beginnen.
+    pub fn resume(&mut self, n: usize, temp: f32, top_k: Option<u32>, top_p: Option<f32>) -> bool {
+        match self.session.as_mut() {
+            Some(s) => {
+                s.left = n;
+                s.temp = temp;
+                s.top_k = top_k.map(|k| k as usize);
+                s.top_p = top_p;
+                true
+            }
+            None => false,
+        }
     }
 }
 

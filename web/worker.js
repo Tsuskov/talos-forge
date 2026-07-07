@@ -28,10 +28,15 @@ onmessage = async (e) => {
     return;
   }
 
-  if (m.type === 'generate') {
+  if (m.type === 'generate' || m.type === 'continue') {
     const my = ++gen;
     try {
-      forge.start(m.prompt, m.n, m.temp, m.top_k, m.top_p, BigInt(m.seed));
+      // 'continue' setzt die lebende Session fort (kein Prefill). Ist sie weg
+      // (EOS oder Kontext voll), fällt es auf einen vollen Neustart zurück —
+      // m.prompt enthält dafür den kompletten bisherigen Text.
+      if (m.type !== 'continue' || !forge.resume(m.n, m.temp, m.top_k, m.top_p)) {
+        forge.start(m.prompt, m.n, m.temp, m.top_k, m.top_p, BigInt(m.seed));
+      }
     } catch (err) {
       postMessage({ type: 'error', error: String(err) });
       return;

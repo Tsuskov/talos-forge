@@ -390,29 +390,47 @@
     $('againBtn').classList.toggle('on', !forging && !!$('gen').textContent);
   }
 
+  function params() {
+    return {
+      n: Math.max(1, +$('n').value || 128),
+      temp: Math.max(0, +$('temp').value || 0),
+      top_k: $('topk').value !== '' ? +$('topk').value : undefined,
+      top_p: $('topp').value !== '' ? +$('topp').value : undefined,
+    };
+  }
+
+  function beginRun() {
+    forging = true;
+    document.querySelector('.result-foot').classList.remove('err');
+    $('stats').textContent = '';
+    $('anvil').classList.add('forging');
+    setControls();
+  }
+
   function forge() {
     if (forging) return;
     const prompt = $('prompt').value;
     if (!prompt.trim()) { $('prompt').focus(); return; }
-    forging = true;
     lastSeed = $('seed').value !== '' ? +$('seed').value : Math.floor(Math.random() * 2 ** 32);
-    document.querySelector('.result-foot').classList.remove('err');
-    $('stats').textContent = '';
+    beginRun();
     $('echo').textContent = prompt;
     $('gen').textContent = '';
     const result = $('result');
     result.classList.add('on');
     requestAnimationFrame(() => result.classList.add('in'));
-    $('anvil').classList.add('forging');
-    setControls();
+    worker.postMessage({ type: 'generate', prompt, seed: lastSeed, ...params() });
+  }
+
+  // Setzt die Session im Worker fort — KV-Cache bleibt, kein Re-Prefill.
+  // prompt + seed braucht nur der Fallback, falls die Session weg ist.
+  function continueForge() {
+    if (forging) return;
+    beginRun();
     worker.postMessage({
-      type: 'generate',
-      prompt,
-      n: Math.max(1, +$('n').value || 128),
-      temp: Math.max(0, +$('temp').value || 0),
-      top_k: $('topk').value !== '' ? +$('topk').value : undefined,
-      top_p: $('topp').value !== '' ? +$('topp').value : undefined,
-      seed: lastSeed,
+      type: 'continue',
+      prompt: $('echo').textContent + $('gen').textContent,
+      seed: lastSeed ?? Math.floor(Math.random() * 2 ** 32),
+      ...params(),
     });
   }
 
@@ -421,11 +439,7 @@
   }
 
   $('forgeBtn').addEventListener('click', () => (forging ? stop() : forge()));
-  $('againBtn').addEventListener('click', () => {
-    $('prompt').value = $('echo').textContent + $('gen').textContent;
-    growPrompt();
-    forge();
-  });
+  $('againBtn').addEventListener('click', continueForge);
   document.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); forge(); }
     if (e.key === 'Escape') stop();
