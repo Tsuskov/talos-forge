@@ -41,26 +41,53 @@ onmessage = async (e) => {
       postMessage({ type: 'error', error: String(err) });
       return;
     }
-    const t0 = performance.now();
-    let tokens = 0;
-    const pump = () => {
+
+    // Erst der Prefill (falls noch Prompt-Tokens ausstehen — auch nach einem
+    // Stopp mittendrin), dann das Decodieren. tok/s misst nur das Decodieren.
+    const total = forge.prefill(0);
+    const tPre = performance.now();
+    let prefillSecs = 0;
+
+    const decode = () => {
+      const t0 = performance.now();
+      let tokens = 0;
+      const pump = () => {
+        if (my !== gen) return; // gestoppt
+        const deadline = performance.now() + 30;
+        while (performance.now() < deadline) {
+          const chunk = forge.next_chunk();
+          if (chunk === undefined) {
+            postMessage({
+              type: 'done',
+              tokens,
+              secs: (performance.now() - t0) / 1000,
+              ...(total ? { prefillSecs, promptTokens: total } : {}),
+            });
+            return;
+          }
+          tokens++;
+          if (chunk) postMessage({ type: 'chunk', text: chunk });
+        }
+        setTimeout(pump, 0);
+      };
+      pump();
+    };
+
+    const prefill = (remaining) => {
       if (my !== gen) return; // gestoppt
       const deadline = performance.now() + 30;
-      while (performance.now() < deadline) {
-        const chunk = forge.next_chunk();
-        if (chunk === undefined) {
-          postMessage({
-            type: 'done',
-            tokens,
-            secs: (performance.now() - t0) / 1000,
-          });
-          return;
-        }
-        tokens++;
-        if (chunk) postMessage({ type: 'chunk', text: chunk });
+      while (remaining > 0 && performance.now() < deadline) {
+        remaining = forge.prefill(8);
       }
-      setTimeout(pump, 0);
+      if (remaining > 0) {
+        postMessage({ type: 'prefill', done: total - remaining, total });
+        setTimeout(prefill, 0, remaining);
+      } else {
+        prefillSecs = (performance.now() - tPre) / 1000;
+        if (total) postMessage({ type: 'prefill', done: total, total });
+        decode();
+      }
     };
-    pump();
+    prefill(total);
   }
 };

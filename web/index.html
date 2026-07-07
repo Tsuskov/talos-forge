@@ -205,6 +205,8 @@
   }
   #anvil .prompt { color: var(--faint); }
   #anvil .gen { color: var(--text); }
+  /* Prefill-Fortschritt: der schon eingespeiste Teil des Prompts glüht auf */
+  #echoHot { color: var(--dim); }
 
   .cursor {
     display: none;
@@ -290,7 +292,7 @@
   </div>
 
   <div id="result">
-    <div id="anvil"><span class="prompt" id="echo"></span><span class="gen" id="gen"></span><span class="cursor"></span></div>
+    <div id="anvil"><span class="prompt" id="echo"><span id="echoHot"></span><span id="echoCold"></span></span><span class="gen" id="gen"></span><span class="cursor"></span></div>
     <div class="result-foot"><span id="stats"></span><button id="againBtn">Weiterschmieden</button></div>
   </div>
 
@@ -306,6 +308,15 @@
   const worker = new Worker('./worker.js', { type: 'module' });
   let forging = false;
   let lastSeed = null;
+
+  // Prompt-Echo mit Prefill-Tint: der eingespeiste Anteil (frac 0…1) glüht
+  // auf, nach dem Lauf kühlt alles wieder auf faint ab.
+  let echoText = '';
+  function setEchoTint(frac) {
+    const cut = Math.round(echoText.length * frac);
+    $('echoHot').textContent = echoText.slice(0, cut);
+    $('echoCold').textContent = echoText.slice(cut);
+  }
 
   // Chatbar wächst und schrumpft mit dem Inhalt (52px … 280px)
   const promptEl = $('prompt');
@@ -356,22 +367,28 @@
         `<span>${m.info.vocab_size} Vocab</span><span>${m.info.context_length} Kontext</span>`;
       $('composer').classList.add('on');
       $('prompt').focus();
+    } else if (m.type === 'prefill') {
+      setEchoTint(m.total ? m.done / m.total : 1);
     } else if (m.type === 'chunk') {
       $('gen').textContent += m.text;
     } else if (m.type === 'done') {
       forging = false;
       $('anvil').classList.remove('forging');
+      setEchoTint(0);
       setControls();
       if (!m.stopped) {
         const tps = m.tokens && m.secs ? (m.tokens / m.secs).toFixed(0) : '–';
         $('stats').textContent =
-          `${m.tokens} Tokens · ${m.secs.toFixed(2)} s · ${tps} tok/s · Seed ${lastSeed}`;
+          `${m.tokens} Tokens · ${m.secs.toFixed(2)} s · ${tps} tok/s` +
+          (m.promptTokens ? ` · Prefill ${m.prefillSecs.toFixed(2)} s` : '') +
+          ` · Seed ${lastSeed}`;
       } else {
         $('stats').textContent = `Gestoppt · Seed ${lastSeed}`;
       }
     } else if (m.type === 'error') {
       forging = false;
       $('anvil').classList.remove('forging');
+      setEchoTint(0);
       setControls();
       document.querySelector('.result-foot').classList.add('err');
       $('stats').textContent = m.error;
@@ -413,7 +430,8 @@
     if (!prompt.trim()) { $('prompt').focus(); return; }
     lastSeed = $('seed').value !== '' ? +$('seed').value : Math.floor(Math.random() * 2 ** 32);
     beginRun();
-    $('echo').textContent = prompt;
+    echoText = prompt;
+    setEchoTint(0);
     $('gen').textContent = '';
     const result = $('result');
     result.classList.add('on');

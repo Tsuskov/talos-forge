@@ -18,6 +18,8 @@ pub struct Forge {
 
 struct Session {
     rng: StdRng,
+    prompt_ids: Vec<u32>,
+    fed: usize, // wie viele Prompt-Tokens schon im Modell sind (Prefill-Stand)
     pos: usize,
     logits: Vec<f32>,
     out_ids: Vec<u32>,
@@ -46,8 +48,9 @@ impl Forge {
         )
     }
 
-    /// Start a generation: encode + prefill the prompt. Blocks for the length
-    /// of the prefill — run inside a Web Worker.
+    /// Start a generation: encode + validate the prompt. Der eigentliche
+    /// Prefill passiert danach häppchenweise über `prefill` — so kann der
+    /// Worker Fortschritt melden und ein Stopp greift auch mittendrin.
     #[allow(clippy::too_many_arguments)]
     pub fn start(
         &mut self,
@@ -71,17 +74,12 @@ impl Forge {
         }
 
         self.model.reset();
-        let mut pos = 0usize;
-        let mut logits = Vec::new();
-        for &t in &prompt_ids {
-            logits = self.model.step(t, pos);
-            pos += 1;
-        }
-
         self.session = Some(Session {
             rng: StdRng::seed_from_u64(seed),
-            pos,
-            logits,
+            prompt_ids,
+            fed: 0,
+            pos: 0,
+            logits: Vec::new(),
             out_ids: Vec::new(),
             emitted: 0,
             left: n,
@@ -92,13 +90,30 @@ impl Forge {
         Ok(())
     }
 
+    /// Speist bis zu `max` Prompt-Tokens ins Modell und gibt zurück, wie
+    /// viele noch fehlen. `prefill(0)` fragt nur den Reststand ab — auch
+    /// nach einem Stopp mitten im Prefill.
+    pub fn prefill(&mut self, max: usize) -> u32 {
+        let Some(s) = self.session.as_mut() else {
+            return 0;
+        };
+        let end = (s.fed + max).min(s.prompt_ids.len());
+        while s.fed < end {
+            s.logits = self.model.step(s.prompt_ids[s.fed], s.pos);
+            s.pos += 1;
+            s.fed += 1;
+        }
+        (s.prompt_ids.len() - s.fed) as u32
+    }
+
     /// One decode step. Returns the newly completed text for this token, or
     /// `None` when the generation is finished (EOS, budget, or context full).
     /// Bei erschöpftem Budget bleibt die Session bestehen — `resume` kann sie
     /// ohne erneuten Prefill fortsetzen; EOS und volles Kontextfenster sind final.
     pub fn next_chunk(&mut self) -> Option<String> {
         let s = self.session.as_mut()?;
-        if s.left == 0 {
+        // Vor Ende des Prefills gibt es keine gültigen Logits zum Samplen.
+        if s.fed < s.prompt_ids.len() || s.left == 0 {
             return None;
         }
         if s.pos >= self.model.cfg.context_length {
