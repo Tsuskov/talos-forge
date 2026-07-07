@@ -4,27 +4,42 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Schule von Athen</title>
+<meta name="description" content="Ein from-scratch LLM live im Browser — Cadmus (Tokenizer) → Hephaistos (Training) → Talos (wasm-Inferenz).">
+<link rel="icon" type="image/png" href="https://tsuskov.github.io/favicon.png">
+<meta property="og:title" content="Schule von Athen">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://tsuskov.github.io/talos-forge/">
+<meta property="og:description" content="Ein from-scratch LLM live im Browser — Cadmus → Hephaistos → Talos, als wasm.">
 <style>
   :root {
     color-scheme: light;
-    --bg: #faf9f5;
+    /* Designsprache von tsuskov.github.io: zinc-Palette, Punktraster,
+       schwarzer Akzent, GitHub-Grün als einzige Farbe, Emil-Kurven. */
+    --bg: #fafafa;
     --surface: #ffffff;
-    --line: #e6e4dc;
-    --text: #1a1a18;
-    --dim: #6b6a66;
-    --faint: #a3a29c;
-    --accent: #0071e3;
-    --accent-hover: #0077ed;
-    --focus-ring: rgba(0, 113, 227, 0.12);
+    --line: rgba(0, 0, 0, 0.08);
+    --line-strong: rgba(0, 0, 0, 0.14);
+    --text: #18181b;
+    --dim: #71717a;
+    --faint: #a1a1aa;
+    --accent: #18181b;
+    --hover: #f4f4f5;
+    --green: #30a14e;
+    --green-bright: #40c463;
+    --green-track: #ebedf0;
     --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-    --font: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     --mono: ui-monospace, "SF Mono", Menlo, monospace;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
-    background: var(--bg);
+    background-color: var(--bg);
+    /* hauchzartes Punktraster wie auf der Profilseite */
+    background-image: radial-gradient(rgba(0, 0, 0, 0.035) 1px, transparent 1px);
+    background-size: 22px 22px;
     color: var(--text);
     font: 15px/1.5 var(--font);
     -webkit-font-smoothing: antialiased;
@@ -64,8 +79,28 @@
 
   h1 {
     font-size: 30px;
-    font-weight: 500;
+    font-weight: 650;
     letter-spacing: -0.02em;
+    cursor: default;
+  }
+  @media (min-width: 600px) {
+    h1 { font-size: 38px; }
+  }
+
+  /* Signature der Profilseite: Farbschimmer beim Hovern des Titels */
+  @media (hover: hover) and (pointer: fine) {
+    h1:hover {
+      background: linear-gradient(110deg, var(--text) 30%, #6366f1 50%, var(--text) 70%);
+      background-size: 220% 100%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 900ms var(--ease-in-out);
+    }
+  }
+  @keyframes shimmer {
+    from { background-position: 120% 0; }
+    to   { background-position: -120% 0; }
   }
 
   .chips {
@@ -74,42 +109,44 @@
     gap: 14px;
     flex-wrap: wrap;
     margin-top: 10px;
-    font-size: 12px;
+    font-size: 12.5px;
     color: var(--faint);
+    letter-spacing: 0.01em;
     min-height: 1.2em;
   }
-  /* Q4_0↔F32-Wechsel, als Link in der Chips-Zeile */
+  /* Q4_0↔F32-Wechsel, als unterstrichener Link wie auf der Profilseite */
   #swapBtn {
-    font: 12px var(--font);
-    font-weight: 500;
+    font: 12.5px var(--font);
     border: none;
     background: none;
-    color: var(--accent);
+    color: var(--dim);
     cursor: pointer;
-    padding: 0;
-    transition: color 150ms ease;
+    padding: 0 0 1px;
+    border-bottom: 1px solid var(--line-strong);
+    border-radius: 0;
+    transition: color 160ms var(--ease-out), border-color 160ms var(--ease-out);
   }
   @media (hover: hover) and (pointer: fine) {
-    #swapBtn:hover { color: var(--accent-hover); }
+    #swapBtn:hover { color: var(--text); border-color: var(--text); }
   }
 
-  /* ── Ladephase ────────────────────────────────────────── */
+  /* ── Ladephase: schmale Leiste in Contribution-Grün ───── */
   #loader { text-align: center; padding: 8px 0; }
   #loader .phase { color: var(--dim); font-size: 13px; }
   #loader .bar {
     width: min(300px, 76%);
-    height: 3px;
+    height: 4px;
     margin: 16px auto 0;
-    background: var(--line);
-    border-radius: 2px;
+    background: var(--green-track);
+    border-radius: 999px;
     overflow: hidden;
   }
   #loader .bar i {
     display: block;
     height: 100%;
     width: 0%;
-    background: var(--accent);
-    border-radius: 2px;
+    background: var(--green);
+    border-radius: inherit;
     transition: width 200ms var(--ease-out);
   }
 
@@ -118,14 +155,14 @@
     display: none;
     background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: 18px;
-    box-shadow: 0 2px 8px rgba(26, 26, 24, 0.04);
-    transition: border-color 150ms ease, box-shadow 150ms ease;
+    border-radius: 16px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition: border-color 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
   }
   #composer.on { display: block; }
   #composer:focus-within {
-    border-color: #cfcdc4;
-    box-shadow: 0 2px 12px rgba(26, 26, 24, 0.07);
+    border-color: var(--line-strong);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.10);
   }
 
   textarea {
@@ -161,7 +198,7 @@
     transition: background-color 150ms ease;
   }
   @media (hover: hover) and (pointer: fine) {
-    .field:hover { background: #f4f3ee; }
+    .field:hover { background: var(--hover); }
   }
   .field label { font-size: 11.5px; color: var(--faint); }
   .field input {
@@ -180,23 +217,29 @@
 
   .spacer { flex: 1; }
 
-  /* Primärknopf: morpht Schmieden ↔ Stopp */
+  /* Primärknopf: morpht Schmieden ↔ Stopp; schwarz wie der Start-Button
+     der Profilseite, mit Lift beim Hovern */
   #forgeBtn {
     font: 13.5px var(--font);
-    font-weight: 500;
+    font-weight: 600;
     border: none;
-    border-radius: 980px;
+    border-radius: 11px;
     padding: 8px 18px;
     cursor: pointer;
     background: var(--accent);
-    color: #fff;
-    transition: transform 140ms var(--ease-out), background-color 180ms ease;
+    color: var(--surface);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+    transition: transform 140ms var(--ease-out), box-shadow 180ms var(--ease-out),
+      background-color 180ms ease;
   }
-  #forgeBtn:active { transform: scale(0.97); }
-  #forgeBtn.stop { background: #3d3d3a; }
+  #forgeBtn:active { transform: scale(0.96); }
+  #forgeBtn.stop { background: #52525b; }
   @media (hover: hover) and (pointer: fine) {
-    #forgeBtn:not(.stop):hover { background: var(--accent-hover); }
-    #forgeBtn.stop:hover { background: #52524e; }
+    #forgeBtn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.20);
+    }
+    #forgeBtn.stop:hover { background: #3f3f46; }
   }
   #forgeBtn kbd { font: 10.5px var(--font); opacity: 0.6; margin-left: 6px; }
 
@@ -228,7 +271,7 @@
     height: 1.05em;
     margin-left: 1px;
     vertical-align: text-bottom;
-    background: var(--accent);
+    background: var(--green);
     border-radius: 1px;
     animation: blink 1.06s steps(2, start) infinite;
   }
@@ -249,17 +292,17 @@
   #againBtn {
     display: none;
     font: 12px var(--font);
-    font-weight: 500;
     border: none;
     background: none;
-    color: var(--accent);
+    color: var(--dim);
     cursor: pointer;
-    padding: 0;
-    transition: color 150ms ease;
+    padding: 0 0 1px;
+    border-bottom: 1px solid var(--line-strong);
+    transition: color 160ms var(--ease-out), border-color 160ms var(--ease-out);
   }
   #againBtn.on { display: inline; }
   @media (hover: hover) and (pointer: fine) {
-    #againBtn:hover { color: var(--accent-hover); }
+    #againBtn:hover { color: var(--text); border-color: var(--text); }
   }
 
   footer {
@@ -269,12 +312,21 @@
     color: var(--faint);
   }
   footer b { color: var(--dim); font-weight: 500; }
+  footer a {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid var(--line-strong);
+    padding-bottom: 1px;
+    transition: color 160ms var(--ease-out), border-color 160ms var(--ease-out);
+  }
+  footer a:hover { color: var(--text); border-color: var(--text); }
 
   @media (prefers-reduced-motion: reduce) {
     .art, header, #loader, #composer { transition: opacity 200ms ease; transform: none; }
     #result { transition: opacity 200ms ease; transform: none; }
     .cursor { animation: none; }
-    #forgeBtn:active { transform: none; }
+    h1:hover { animation: none; }
+    #forgeBtn:active, #forgeBtn:hover { transform: none; }
   }
 </style>
 </head>
@@ -312,6 +364,7 @@
 
   <footer>
     <p><b>Cadmus</b> (Tokenizer) → <b>Hephaistos</b> (Training) → <b>Talos</b> (Inferenz) · WebAssembly · alles lokal, nichts verlässt deinen Rechner</p>
+    <p style="margin-top: 8px"><a href="https://github.com/Tsuskov/talos-forge">github.com/Tsuskov/talos-forge</a> · <a href="https://tsuskov.github.io/">tsuskov.github.io</a></p>
   </footer>
 </div>
 
