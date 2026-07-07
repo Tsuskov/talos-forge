@@ -44,7 +44,15 @@
     font: 15px/1.5 var(--font);
     -webkit-font-smoothing: antialiased;
     min-height: 100vh;
-    padding: 72px 22px 72px;
+    /* Rhythmus der Profilseite: kompakt auf Mobile, luftig ab 600px */
+    padding: 56px 20px 56px;
+  }
+  @media (min-width: 600px) {
+    body { padding: 88px 22px 72px; }
+  }
+  /* Tastatur-Hinweise sind auf Touch-Geräten bedeutungslos */
+  @media (hover: none) {
+    kbd { display: none; }
   }
 
   .wrap { max-width: 640px; margin: 0 auto; }
@@ -332,7 +340,7 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="art"><img src="./art/platon_aristoteles.png" alt="Platon und Aristoteles aus Raffaels Schule von Athen — als Block-ASCII gerendert"></div>
+  <div class="art"><img src="./art/platon_aristoteles_green.png" alt="Platon und Aristoteles aus Raffaels Schule von Athen — als Block-ASCII in den Grüntönen des GitHub-Contribution-Graphen"></div>
 
   <header>
     <h1>Schule von Athen</h1>
@@ -345,7 +353,7 @@
   </div>
 
   <div id="composer">
-    <textarea id="prompt" rows="1" spellcheck="false" placeholder="Schreib einen Anfang — Hephaistos schmiedet weiter …"></textarea>
+    <textarea id="prompt" rows="1" spellcheck="false" placeholder="Schreib einen Anfang …"></textarea>
     <div class="composer-row">
       <div class="field"><label for="n">Tokens</label><input id="n" type="number" value="128" min="1" max="240"></div>
       <div class="field"><label for="temp">Temp</label><input id="temp" type="number" value="0.8" min="0" max="2" step="0.05"></div>
