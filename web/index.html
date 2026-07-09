@@ -580,10 +580,24 @@
     setControls();
   }
 
+  // Leerer Prompt soll nicht still verpuffen: ein Starter wird eingesetzt,
+  // damit der erste Tap auf „Schmieden" immer etwas erzeugt.
+  const STARTERS = [
+    'Zeus spoke to the',
+    'The oracle at Delphi said',
+    'Athena rose and',
+    'In the halls of Olympus',
+    'Prometheus stole the',
+  ];
+
   function forge() {
     if (forging) return;
-    const prompt = $('prompt').value;
-    if (!prompt.trim()) { $('prompt').focus(); return; }
+    let prompt = $('prompt').value;
+    if (!prompt.trim()) {
+      prompt = STARTERS[Math.floor(Math.random() * STARTERS.length)];
+      promptEl.value = prompt;
+      growPrompt();
+    }
     lastSeed = $('seed').value !== '' ? +$('seed').value : Math.floor(Math.random() * 2 ** 32);
     beginRun();
     echoText = prompt;
