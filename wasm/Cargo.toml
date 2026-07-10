@@ -9,6 +9,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 talos = { path = "../../talos" }
+mnemosyne = { path = "../../Mnemosyne" }
 anyhow = "1"
 wasm-bindgen = "0.2"
 rand = "0.8"

@@ -164,6 +164,101 @@ impl Forge {
     }
 }
 
+/// Mnemosyne im Browser: Retrieval über den mitgelieferten Index. Die Sibylle
+/// findet die Passagen, die Schmiede (`Forge`) formt daraus die Antwort —
+/// Encoder-Modell und Generator bleiben getrennt geladen, teilen aber den
+/// Cadmus-Tokenizer, sodass das Prompt-Budget hier gezählt werden kann.
+#[wasm_bindgen]
+pub struct Sibyl {
+    embedder: mnemosyne::embed::Embedder,
+    index: mnemosyne::index::Index,
+}
+
+#[wasm_bindgen]
+impl Sibyl {
+    /// Encoder-GGUF-Bytes + Index-Bytes (MNEM v1 f32 oder v2 f16) laden.
+    #[wasm_bindgen(constructor)]
+    pub fn new(encoder_bytes: Vec<u8>, index_bytes: Vec<u8>) -> Result<Sibyl, JsError> {
+        let embedder = mnemosyne::embed::Embedder::from_bytes(encoder_bytes).map_err(to_js)?;
+        let index = mnemosyne::index::Index::from_bytes(&index_bytes).map_err(to_js)?;
+        if index.dim != embedder.dim() {
+            return Err(JsError::new(&format!(
+                "Index-Dimension {} passt nicht zum Encoder ({})",
+                index.dim,
+                embedder.dim()
+            )));
+        }
+        Ok(Sibyl { embedder, index })
+    }
+
+    /// Index-Steckbrief als JSON (für die UI).
+    pub fn info(&self) -> String {
+        format!(
+            r#"{{"entries":{},"dim":{},"model":"{}"}}"#,
+            self.index.entries.len(),
+            self.index.dim,
+            json_escape(&self.index.model_name)
+        )
+    }
+
+    /// Top-`k`-Passagen zur Query als JSON-Array `[{score, text}, …]`.
+    pub fn search(&mut self, query: &str, k: usize) -> Result<String, JsError> {
+        let q = self.embedder.embed_text(query).map_err(to_js)?;
+        let hits = self.index.search(&q, k);
+        let items: Vec<String> = hits
+            .iter()
+            .map(|&(i, score)| {
+                format!(
+                    r#"{{"score":{score:.4},"text":"{}"}}"#,
+                    json_escape(self.index.entries[i].text.trim())
+                )
+            })
+            .collect();
+        Ok(format!("[{}]", items.join(",")))
+    }
+
+    /// Retrieval + Prompt-Packing in einem: holt Top-`k`-Passagen zur Frage
+    /// und packt sie mit Frage + optionalem Antwort-Präfix in `max_tokens`.
+    /// Das Ergebnis geht als Prompt an `Forge.start`.
+    pub fn build_prompt(
+        &mut self,
+        question: &str,
+        k: usize,
+        prefix: Option<String>,
+        max_tokens: usize,
+    ) -> Result<String, JsError> {
+        let q = self.embedder.embed_text(question).map_err(to_js)?;
+        let hits = self.index.search(&q, k);
+        let passages: Vec<&str> =
+            hits.iter().map(|&(i, _)| self.index.entries[i].text.trim()).collect();
+        let tok = &self.embedder.model.tokenizer;
+        let (_, text) = mnemosyne::prompt::build(
+            |s| tok.encode(s),
+            &passages,
+            question,
+            prefix.as_deref(),
+            max_tokens,
+        );
+        Ok(text)
+    }
+}
+
+fn json_escape(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push(c),
+        }
+    }
+    out
+}
+
 fn to_js(e: anyhow::Error) -> JsError {
     JsError::new(&format!("{e:#}"))
 }

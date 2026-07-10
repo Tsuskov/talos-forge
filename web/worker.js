@@ -3,9 +3,10 @@
 // möglich erzeugt, dann gibt setTimeout(0) der Message-Queue Luft — so kann
 // ein "stop" die laufende Generierung zwischen zwei Scheiben abbrechen.
 
-import init, { Forge } from './pkg/talos_forge_wasm.js';
+import init, { Forge, Sibyl } from './pkg/talos_forge_wasm.js';
 
 let forge = null;
+let sibyl = null; // Mnemosyne: Encoder + Index für das Retrieval
 let gen = 0; // Generation-Zähler: erhöht = laufende Session ist abgebrochen
 
 onmessage = async (e) => {
@@ -25,6 +26,19 @@ onmessage = async (e) => {
     return;
   }
 
+  if (m.type === 'loadSibyl') {
+    try {
+      await init();
+      if (sibyl) sibyl.free();
+      sibyl = new Sibyl(new Uint8Array(m.encoder), new Uint8Array(m.index));
+      postMessage({ type: 'sibylReady', info: JSON.parse(sibyl.info()) });
+    } catch (err) {
+      sibyl = null;
+      postMessage({ type: 'error', error: String(err) });
+    }
+    return;
+  }
+
   if (m.type === 'stop') {
     gen++;
     postMessage({ type: 'done', stopped: true });
@@ -34,11 +48,20 @@ onmessage = async (e) => {
   if (m.type === 'generate' || m.type === 'continue') {
     const my = ++gen;
     try {
+      // Mnemosyne: erst suchen, dann die Passagen + Frage in den Kontext
+      // packen — der gepackte Prompt geht zurück an die Seite (Transparenz)
+      // und ersetzt den Nutzer-Prompt für den Prefill.
+      let prompt = m.prompt;
+      if (m.type === 'generate' && m.retrieve && sibyl) {
+        const hits = JSON.parse(sibyl.search(prompt, m.retrieve.k));
+        prompt = sibyl.build_prompt(prompt, m.retrieve.k, undefined, m.retrieve.budget);
+        postMessage({ type: 'retrieved', prompt, scores: hits.map((h) => h.score) });
+      }
       // 'continue' setzt die lebende Session fort (kein Prefill). Ist sie weg
       // (EOS oder Kontext voll), fällt es auf einen vollen Neustart zurück —
       // m.prompt enthält dafür den kompletten bisherigen Text.
       if (m.type !== 'continue' || !forge.resume(m.n, m.temp, m.top_k, m.top_p)) {
-        forge.start(m.prompt, m.n, m.temp, m.top_k, m.top_p, BigInt(m.seed));
+        forge.start(prompt, m.n, m.temp, m.top_k, m.top_p, BigInt(m.seed));
       }
     } catch (err) {
       postMessage({ type: 'error', error: String(err) });
