@@ -2,3 +2,4 @@ web/pkg/
 web/*.gguf
 wasm/target/
 quant/target/
+web/*.idx
