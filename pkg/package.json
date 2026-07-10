@@ -1,0 +1,16 @@
+{
+  "name": "talos-forge-wasm",
+  "type": "module",
+  "description": "wasm-bindgen wrapper around talos — runs Hephaistos models in the browser.",
+  "version": "0.1.0",
+  "files": [
+    "talos_forge_wasm_bg.wasm",
+    "talos_forge_wasm.js",
+    "talos_forge_wasm.d.ts"
+  ],
+  "main": "talos_forge_wasm.js",
+  "types": "talos_forge_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
