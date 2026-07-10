@@ -201,10 +201,11 @@ impl Sibyl {
         )
     }
 
-    /// Top-`k`-Passagen zur Query als JSON-Array `[{score, text}, …]`.
+    /// Top-`k`-Passagen zur Query als JSON-Array `[{score, text}, …]` —
+    /// disjunkt (search_diverse), passend zu `build_prompt`.
     pub fn search(&mut self, query: &str, k: usize) -> Result<String, JsError> {
         let q = self.embedder.embed_text(query).map_err(to_js)?;
-        let hits = self.index.search(&q, k);
+        let hits = self.index.search_diverse(&q, k);
         let items: Vec<String> = hits
             .iter()
             .map(|&(i, score)| {
@@ -228,7 +229,7 @@ impl Sibyl {
         max_tokens: usize,
     ) -> Result<String, JsError> {
         let q = self.embedder.embed_text(question).map_err(to_js)?;
-        let hits = self.index.search(&q, k);
+        let hits = self.index.search_diverse(&q, k);
         let passages: Vec<&str> =
             hits.iter().map(|&(i, _)| self.index.entries[i].text.trim()).collect();
         let tok = &self.embedder.model.tokenizer;

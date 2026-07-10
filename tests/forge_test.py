@@ -80,6 +80,22 @@ with sync_playwright() as p:
     print(f"Erster Chunk nach Weiterschmieden: {ms:.0f} ms")
     print("Stats Lauf 2   :", stats2)
     echo_after = page_echo = p2.text_content("#echo")
+    p2.close()
+
+    # Mnemosyne: Toggle lädt Encoder + Index; das Retrieval packt Passagen
+    # vor die Frage (Echo = gepackter Prompt) und die Scores landen in Stats.
+    p3 = new_page(browser)
+    off_placeholder_before = p3.get_attribute("#prompt", "placeholder")
+    p3.click("#memBtn")
+    p3.wait_for_selector("#memBtn.on", timeout=300000)
+    mem_placeholder = p3.get_attribute("#prompt", "placeholder")
+    question = "Proserpina was carried off by Pluto"
+    mem_gen, mem_echo, mem_stats = run_forge(p3, question, 24, 42)
+    print("Mnemosyne-Echo:", len(mem_echo), "Zeichen (Frage:", len(question), ")")
+    print("Mnemosyne-Stats:", mem_stats)
+    p3.click("#memBtn")  # Toggle aus, ohne neu zu laden
+    mem_off_placeholder = p3.get_attribute("#prompt", "placeholder")
+    p3.close()
 
     browser.close()
 
@@ -99,4 +115,11 @@ check(len(f32_gen) > 0 and "tok/s" in f32_stats, "F32-Modell generiert nach dem 
 check("Prefill" not in stats2, "Fortsetzung ohne Prefill (kein Prefill in Stats)")
 check(hot_seen > 0, "Prefill-Glühen partiell sichtbar (echoHot füllt sich)")
 check(hot_after == "", "Echo kühlt nach dem Lauf wieder ab")
+check("Schreib einen Anfang" in off_placeholder_before, "Mnemosyne aus: Standard-Platzhalter")
+check("Frag die Mythen" in mem_placeholder, "Mnemosyne an: Platzhalter wechselt")
+check(question in mem_echo and len(mem_echo) > len(question) + 40,
+      "Echo = gepackter Prompt (Passagen + Frage)")
+check("Mnemosyne" in mem_stats, "Stats zeigen Retrieval-Scores")
+check(len(mem_gen) > 0, "Generierung mit Retrieval-Kontext läuft")
+check("Schreib einen Anfang" in mem_off_placeholder, "Toggle aus: Platzhalter zurück")
 sys.exit(0 if ok else 1)
