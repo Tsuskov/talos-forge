@@ -8,11 +8,14 @@
 set -eu
 cd "$(dirname "$0")/.."
 
-tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT
-
+# Persistenter Checkout in .ghpages/ (gitignoriert): spart den ~220-MB-Clone
+# pro Deploy — bei heutigem Netz scheiterte selbst der gern.
+tmp=.ghpages
 origin=$(git remote get-url origin)
-if git ls-remote --exit-code --heads "$origin" gh-pages >/dev/null 2>&1; then
+if [ -d "$tmp/.git" ]; then
+    git -C "$tmp" fetch -q --depth 1 origin gh-pages
+    git -C "$tmp" reset -q --hard origin/gh-pages
+elif git ls-remote --exit-code --heads "$origin" gh-pages >/dev/null 2>&1; then
     git clone -q --depth 1 --branch gh-pages "$origin" "$tmp"
 else
     git -C "$tmp" init -q -b gh-pages
