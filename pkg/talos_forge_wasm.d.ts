@@ -65,7 +65,8 @@ export class Sibyl {
      */
     constructor(encoder_bytes: Uint8Array, index_bytes: Uint8Array);
     /**
-     * Top-`k`-Passagen zur Query als JSON-Array `[{score, text}, …]`.
+     * Top-`k`-Passagen zur Query als JSON-Array `[{score, text}, …]` —
+     * disjunkt (search_diverse), passend zu `build_prompt`.
      */
     search(query: string, k: number): string;
 }

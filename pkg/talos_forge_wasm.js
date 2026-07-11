@@ -191,7 +191,8 @@ export class Sibyl {
         return this;
     }
     /**
-     * Top-`k`-Passagen zur Query als JSON-Array `[{score, text}, …]`.
+     * Top-`k`-Passagen zur Query als JSON-Array `[{score, text}, …]` —
+     * disjunkt (search_diverse), passend zu `build_prompt`.
      * @param {string} query
      * @param {number} k
      * @returns {string}
