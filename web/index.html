@@ -14,21 +14,21 @@
 <meta name="twitter:card" content="summary_large_image">
 <style>
   :root {
-    color-scheme: light;
-    /* Designsprache von tsuskov.github.io: zinc-Palette, Punktraster,
-       schwarzer Akzent, GitHub-Grün als einzige Farbe, Emil-Kurven. */
-    --bg: #fafafa;
-    --surface: #ffffff;
-    --line: rgba(0, 0, 0, 0.08);
-    --line-strong: rgba(0, 0, 0, 0.14);
-    --text: #18181b;
-    --dim: #71717a;
-    --faint: #a1a1aa;
-    --accent: #18181b;
-    --hover: #f4f4f5;
-    --green: #30a14e;
-    --green-bright: #40c463;
-    --green-track: #ebedf0;
+    color-scheme: dark;
+    /* Designsprache von tsuskov.github.io: dunkle Palette, Punktraster,
+       heller Akzent, GitHub-Grün als einzige Farbe, Emil-Kurven. */
+    --bg: #101010;
+    --surface: #191919;
+    --line: rgba(255, 255, 255, 0.09);
+    --line-strong: rgba(255, 255, 255, 0.20);
+    --text: #ededed;
+    --dim: #9d9d9d;
+    --faint: #6b6b6b;
+    --accent: #ededed;
+    --hover: #242424;
+    --green: #26a641;
+    --green-bright: #39d353;
+    --green-track: #1b1b1b;
     --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
     --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -40,7 +40,7 @@
   body {
     background-color: var(--bg);
     /* hauchzartes Punktraster wie auf der Profilseite */
-    background-image: radial-gradient(rgba(0, 0, 0, 0.035) 1px, transparent 1px);
+    background-image: radial-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px);
     background-size: 22px 22px;
     color: var(--text);
     font: 15px/1.5 var(--font);
@@ -107,7 +107,7 @@
       transform: scale(1.8);
       border-radius: 28%;
       z-index: 2;
-      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.22);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.58);
     }
   }
 
@@ -196,13 +196,13 @@
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: 16px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.34);
     transition: border-color 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
   }
   #composer.on { display: block; }
   #composer:focus-within {
     border-color: var(--line-strong);
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.10);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.46);
   }
 
   textarea {
@@ -285,7 +285,7 @@
     cursor: pointer;
     background: var(--accent);
     color: var(--surface);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.52);
     transition: transform 140ms var(--ease-out), box-shadow 180ms var(--ease-out),
       background-color 180ms ease;
   }
@@ -294,7 +294,7 @@
   @media (hover: hover) and (pointer: fine) {
     #forgeBtn:hover {
       transform: translateY(-1px);
-      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.20);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.56);
     }
     #forgeBtn.stop:hover { background: #3f3f46; }
   }
